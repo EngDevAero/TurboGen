@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Turbomachinery design tool"
 readme = "README.md"
 authors = [
-    { name = "zrvwallivtr", email = "user@email.com" }
+    { name = "EngDevAero", email = "engineering_dev@tuta.com"}
 ]
 requires-python = ">=3.12"
 dependencies = [
