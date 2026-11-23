@@ -74,9 +74,10 @@ class ImpellerBladeData(TypedDict):
     curve_settings: CurveSettings | None
 
 
-class ImpellerBoundaryData(TypedDict):
+class ImpBdaryDmainData(TypedDict):
     x_arr: Array1D
     r_arr: Array1D
+    mid_pt_arr: Array1D
     periodic_low: Array1D
     periodic_high: Array1D
 
@@ -119,7 +120,7 @@ class ImpCoords3D(TypedDict):
 
 
 ImpellerBladeDict = dict[str, ImpellerBladeData]
-ImpellerBoundaryDict = dict[str, ImpellerBoundaryData]
+ImpBdaryDmainDict = dict[str, ImpBdaryDmainData]
 ImpDesignVals = dict[str, ImpDesignValsPerSpan]
 ImpellerDataValOrdered = tuple[
     Array1D, Array2D, Array2D, Array2D, Array2D, Array2D, Array2D, Array2D

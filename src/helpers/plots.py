@@ -37,32 +37,22 @@ class MeridionalPlots:
     def plot_meridional_contour(
         x_arr: Array1D,
         r_arr: Array1D,
-        span_frac: str,
         ax: AxesFigure2D,
+        **line_kwargs,
     ) -> None:
         """
         Plot the meridional contour (x, r) at a specified span fraction.
 
         Parameters
         ----------
-        x_arr:     Axial values (m).
-        r_arr:     Radial values (m).
-        span_frac: Span fraction.
+        x_arr:         Axial values (m).
+        r_arr:         Radial values (m).
+        span_frac:     Span fraction.
+        **line_kwargs: Line settings.
         """
-        label = f"Span fraction = {span_frac}"
-        if span_frac in ("0", "1"):
-            ax.plot(
-                x_arr,
-                r_arr,
-                linestyle="solid",
-                linewidth=1.5,
-                color="black",
-                label=label,
-            )
-        else:
-            ax.plot(
-                x_arr, r_arr, linestyle="solid", linewidth=1, color="grey", label=label
-            )
+        settings = {}
+        settings.update(line_kwargs)
+        ax.plot(x_arr, r_arr, **settings)
 
     @staticmethod
     def plot_meridional_component_axis(

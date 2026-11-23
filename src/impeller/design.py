@@ -29,7 +29,7 @@ from src.helpers.constants import (
     Plot2DList,
     AxesFigure2D,
     Coords3D,
-    ImpellerBoundaryDict,
+    ImpBdaryDmainDict,
 )
 
 
@@ -38,6 +38,8 @@ class ImpellerDesign:
     Parameters
     ----------
     init_pts:       All initial setup points for hub/shroud.
+    l_inlet:        Inlet length (m).
+    l_outlet:       Outlet length (m).
     init_blade:     All initial setup values for impeller blade.
     theta_start:    Theta at M-prime = 0 (rad).
     shroud_clrance: Shroud clearance (m).
@@ -58,12 +60,16 @@ class ImpellerDesign:
     self.blade_class:    Impeller blade class.
     self.blade:          Impeller blade design values.
     self.bdary_surf:     Boundary surface values.
+    self.inlet_dmain:    Outlet domain values.
+    self.outlet_dmain:   Outlet domain values.
     """
 
     def __init__(
         self,
         init_pts: InitialMeridionalPoints,
         init_blade: InitialBladeValues,
+        l_inlet: float,
+        l_outlet: float,
         theta_start: float = 0,
         shroud_clrance: float = 0,
         res: int = 500,
@@ -82,8 +88,14 @@ class ImpellerDesign:
         self.shroud_clrance = shroud_clrance
         self.d_periodic = np.pi / self.n_blades
 
+        # Impeller Inlet/Outlet length
+        self.l_inlet = l_inlet
+        self.l_outlet = l_outlet
+
         self.blade: ImpellerBladeDict = {}
-        self.bdary_surf: ImpellerBoundaryDict = {}
+        self.bdary_surf: ImpBdaryDmainDict = {}
+        self.inlet_dmain: ImpBdaryDmainDict = {}
+        self.outlet_dmain: ImpBdaryDmainDict = {}
 
     def blade_values_spanwise(
         self,
@@ -306,13 +318,16 @@ class ImpellerDesign:
         """
         x_arr = self.blade["0"]["x_arr"]
         r_arr = self.blade["0"]["r_arr"]
+        mid_pt_arr = self.blade["0"]["camber"]
         periodic_low = self.blade["0"]["periodic_high"]
         periodic_high = self.blade["0"]["periodic_low"]
 
-        self._add_boundary_surface_values(
+        self._add_boundary_domain_values(
+            dmain_dict=self.bdary_surf,
             surf="hub_wall",
             x_arr=x_arr,
             r_arr=r_arr,
+            mid_pt_arr=mid_pt_arr,
             periodic_low=periodic_low,
             periodic_high=periodic_high,
         )
@@ -325,14 +340,17 @@ class ImpellerDesign:
         # Offset from blade tip
         x_arr = self.blade["1"]["x_arr"]
         r_arr = self.blade["1"]["r_arr"]
+        mid_pt_arr = self.blade["1"]["camber"]
         periodic_low = self.blade["1"]["periodic_high"]
         periodic_high = self.blade["1"]["periodic_low"]
 
         if not self.shroud_clrance:
-            self._add_boundary_surface_values(
+            self._add_boundary_domain_values(
+                dmain_dict=self.bdary_surf,
                 surf="shroud_wall",
                 x_arr=x_arr,
                 r_arr=r_arr,
+                mid_pt_arr=mid_pt_arr,
                 periodic_low=periodic_low,
                 periodic_high=periodic_high,
             )
@@ -340,10 +358,12 @@ class ImpellerDesign:
             x_offset_arr, r_offset_arr = Curves.offset_curve(
                 x=x_arr, y=r_arr, offset_dis=self.shroud_clrance
             )
-            self._add_boundary_surface_values(
+            self._add_boundary_domain_values(
+                dmain_dict=self.bdary_surf,
                 surf="shroud_wall",
                 x_arr=x_offset_arr,
                 r_arr=r_offset_arr,
+                mid_pt_arr=mid_pt_arr,
                 periodic_low=periodic_low,
                 periodic_high=periodic_high,
             )
@@ -355,22 +375,137 @@ class ImpellerDesign:
         """
         x_arr = self.blade["1"]["x_arr"]
         r_arr = self.blade["1"]["r_arr"]
+        mid_pt_arr = self.blade["1"]["camber"]
         periodic_low = self.blade["1"]["periodic_high"]
         periodic_high = self.blade["1"]["periodic_low"]
 
-        self._add_boundary_surface_values(
+        self._add_boundary_domain_values(
+            dmain_dict=self.bdary_surf,
             surf="tip_surface",
             x_arr=x_arr,
             r_arr=r_arr,
+            mid_pt_arr=mid_pt_arr,
             periodic_low=periodic_low,
             periodic_high=periodic_high,
         )
 
-    def _add_boundary_surface_values(
+    def inlet_domain_values(self, res: int = 10):
+        """
+        This function assumes the inlet domain extends from the blade inlet in the
+        axial direction.
+        """
+        # Hub axial
+        x_h_1 = np.array(self.bdary_surf["hub_wall"]["x_arr"])[0]
+        x_h = x_h_1 - self.l_inlet
+        x_h_arr = np.linspace(x_h, x_h_1, res)
+
+        # Hub radial
+        r_h_1 = np.array(self.bdary_surf["hub_wall"]["r_arr"])[0]
+        r_h_arr = np.linspace(r_h_1, r_h_1, res)
+
+        # Hub theta
+        mid_pt_h = np.array(self.bdary_surf["hub_wall"]["mid_pt_arr"])[0]
+        mid_pt_h_arr = np.linspace(mid_pt_h, mid_pt_h, res)
+        periodic_low_h = mid_pt_h_arr - self.d_periodic
+        periodic_high_h = mid_pt_h_arr + self.d_periodic
+
+        # Shroud axial
+        x_s_1 = np.array(self.bdary_surf["shroud_wall"]["x_arr"])[0]
+        x_s = x_s_1 - self.l_inlet
+        x_s_arr = np.linspace(x_s, x_s_1, res)
+
+        # Shroud radial
+        r_s_1 = np.array(self.bdary_surf["shroud_wall"]["r_arr"])[0]
+        r_s_arr = np.linspace(r_s_1, r_s_1, res)
+
+        # Shroud theta
+        mid_pt_s = np.array(self.bdary_surf["shroud_wall"]["mid_pt_arr"])[0]
+        mid_pt_s_arr = np.linspace(mid_pt_s, mid_pt_s, res)
+        periodic_low_s = mid_pt_s_arr - self.d_periodic
+        periodic_high_s = mid_pt_s_arr + self.d_periodic
+
+        self._add_boundary_domain_values(
+            dmain_dict=self.inlet_dmain,
+            surf="hub_wall",
+            x_arr=x_h_arr,
+            r_arr=r_h_arr,
+            mid_pt_arr=mid_pt_h_arr,
+            periodic_low=periodic_low_h,
+            periodic_high=periodic_high_h,
+        )
+
+        self._add_boundary_domain_values(
+            dmain_dict=self.inlet_dmain,
+            surf="shroud_wall",
+            x_arr=x_s_arr,
+            r_arr=r_s_arr,
+            mid_pt_arr=mid_pt_s_arr,
+            periodic_low=periodic_low_s,
+            periodic_high=periodic_high_s,
+        )
+
+    def outlet_domain_values(self, res: int = 10):
+        """
+        This function assumes the outlet domain extends from the blade outlet in the
+        radial direction.
+        """
+        # Hub axial
+        x_h_2 = np.array(self.bdary_surf["hub_wall"]["x_arr"])[-1]
+        x_h_arr = np.linspace(x_h_2, x_h_2, res)
+
+        # Hub radial
+        r_h_2 = np.array(self.bdary_surf["hub_wall"]["r_arr"])[-1]
+        r_h = r_h_2 + self.l_outlet
+        r_h_arr = np.linspace(r_h_2, r_h, res)
+
+        # Hub theta
+        mid_pt_h = np.array(self.bdary_surf["hub_wall"]["mid_pt_arr"])[-1]
+        mid_pt_h_arr = np.linspace(mid_pt_h, mid_pt_h, res)
+        periodic_low_h = mid_pt_h_arr - self.d_periodic
+        periodic_high_h = mid_pt_h_arr + self.d_periodic
+
+        # Shroud axial
+        x_s_2 = np.array(self.bdary_surf["shroud_wall"]["x_arr"])[-1]
+        x_s_arr = np.linspace(x_s_2, x_s_2, res)
+
+        # Shroud radial
+        r_s_2 = np.array(self.bdary_surf["shroud_wall"]["r_arr"])[-1]
+        r_s = r_s_2 + self.l_outlet
+        r_s_arr = np.linspace(r_s_2, r_s, res)
+
+        # Shroud theta
+        mid_pt_s = np.array(self.bdary_surf["shroud_wall"]["mid_pt_arr"])[-1]
+        mid_pt_s_arr = np.linspace(mid_pt_s, mid_pt_s, res)
+        periodic_low_s = mid_pt_s_arr - self.d_periodic
+        periodic_high_s = mid_pt_s_arr + self.d_periodic
+
+        self._add_boundary_domain_values(
+            dmain_dict=self.outlet_dmain,
+            surf="hub_wall",
+            x_arr=x_h_arr,
+            r_arr=r_h_arr,
+            mid_pt_arr=mid_pt_h_arr,
+            periodic_low=periodic_low_h,
+            periodic_high=periodic_high_h,
+        )
+
+        self._add_boundary_domain_values(
+            dmain_dict=self.outlet_dmain,
+            surf="shroud_wall",
+            x_arr=x_s_arr,
+            r_arr=r_s_arr,
+            mid_pt_arr=mid_pt_s_arr,
+            periodic_low=periodic_low_s,
+            periodic_high=periodic_high_s,
+        )
+
+    def _add_boundary_domain_values(
         self,
+        dmain_dict,
         surf: str,
         x_arr: Array1D,
         r_arr: Array1D,
+        mid_pt_arr: Array1D,
         periodic_low: Array1D,
         periodic_high: Array1D,
     ):
@@ -380,14 +515,16 @@ class ImpellerDesign:
         surf:          Surface name.
         x_arr:         Axial values from LE to TE (m).
         r_arr:         Radius values from LE to TE (m).
+        mid_pt_arr:    Theta values at the mid point from LE to TE (rad).
         periodic_low:  Theta values from LE to TE where it's half way between current
                        and pervious camber (rad).
         periodic_high: Theta values from LE to TE where it's half way between current
                        and next camber (rad).
         """
-        self.bdary_surf[surf] = {
+        dmain_dict[surf] = {
             "x_arr": x_arr,
             "r_arr": r_arr,
+            "mid_pt_arr": mid_pt_arr,
             "periodic_low": periodic_low,
             "periodic_high": periodic_high,
         }
@@ -396,12 +533,85 @@ class ImpellerDesign:
         fig, ax = MeridionalPlots.create_meridional_figure()
 
         for key, value in self.blade.items():
-            MeridionalPlots.plot_meridional_contour(
-                x_arr=value["x_arr"], r_arr=value["r_arr"], span_frac=key, ax=ax
-            )
+            if key == "1":
+                MeridionalPlots.plot_meridional_contour(
+                    x_arr=value["x_arr"],
+                    r_arr=value["r_arr"],
+                    ax=ax,
+                    linestyle="solid",
+                    linewidth=1.5,
+                    color="black",
+                )
+            elif key == "0":
+                continue
+            else:
+                MeridionalPlots.plot_meridional_contour(
+                    x_arr=value["x_arr"],
+                    r_arr=value["r_arr"],
+                    ax=ax,
+                    linestyle="solid",
+                    linewidth=1,
+                    color="grey",
+                )
+
+        # Hub wall
+        MeridionalPlots.plot_meridional_contour(
+            x_arr=self.bdary_surf["hub_wall"]["x_arr"],
+            r_arr=self.bdary_surf["hub_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+
+        # Shroud wall
+        MeridionalPlots.plot_meridional_contour(
+            x_arr=self.bdary_surf["shroud_wall"]["x_arr"],
+            r_arr=self.bdary_surf["shroud_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+
+        # Inlet domain
+        MeridionalPlots.plot_meridional_contour(
+            x_arr=self.inlet_dmain["hub_wall"]["x_arr"],
+            r_arr=self.inlet_dmain["hub_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+        MeridionalPlots.plot_meridional_contour(
+            x_arr=self.inlet_dmain["shroud_wall"]["x_arr"],
+            r_arr=self.inlet_dmain["shroud_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+
+        # Outlet domain
+        MeridionalPlots.plot_meridional_contour(
+            x_arr=self.outlet_dmain["hub_wall"]["x_arr"],
+            r_arr=self.outlet_dmain["hub_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+        MeridionalPlots.plot_meridional_contour(
+            x_arr=self.outlet_dmain["shroud_wall"]["x_arr"],
+            r_arr=self.outlet_dmain["shroud_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+
         self._plot_meridional_profile_boundary(ax)
         ax.grid()
-        fig.legend()
 
     def _plot_meridional_profile_boundary(self, ax: AxesFigure2D) -> None:
         # Boundary lines

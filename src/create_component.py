@@ -27,17 +27,23 @@ i_pt_TE = 50
 
 
 # Design
-def compute_boundary_data_values(imp_design: ImpellerDesign):
+def boundary_domain_values(imp_design: ImpellerDesign):
     imp_design.hub_wall_values()
     imp_design.shroud_wall_values()
     imp_design.blade_tip_values()
+    imp_design.inlet_domain_values()
+    imp_design.outlet_domain_values()
 
 
 imp_design = ImpellerDesign(
-    init_pts=init_pts, init_blade=init_blade, shroud_clrance=shroud_clrance
+    init_pts=init_pts,
+    init_blade=init_blade,
+    shroud_clrance=shroud_clrance,
+    l_inlet=0.01,
+    l_outlet=0.02,
 )
 imp_design.blade_values_spanwise(span_frac_list, i_pt_LE=i_pt_LE, i_pt_TE=i_pt_TE)
-compute_boundary_data_values(imp_design)
+boundary_domain_values(imp_design)
 
 # Generate 3D geometry
 imp_gen = ImpellerGeneration(
@@ -50,7 +56,7 @@ imp_gen.convert_to_cartesian_3d()
 
 # Plots
 axes_lim = BladePlots3D.get_axes_limit(pts=init_pts)
-# imp_design.plot_meridional_profiles()
+imp_design.plot_meridional_profiles()
 # imp_design.plot_angle_distribution(0.5)
 # imp_design.plot_blade_profile(0.5)
 # imp_gen.plot_spline_spanwise(res=imp_design.res)
