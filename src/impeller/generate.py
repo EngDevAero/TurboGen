@@ -307,7 +307,7 @@ class ImpellerGeneration:
         )
 
     def _shroud_periodic_to_cartesian_3D(self, n_blade, pitch):
-        def _shroud_periodic_surface(
+        def _get_shroud_periodic_surface(
             periodic_loc: Literal["periodic_low", "periodic_high"],
         ) -> Coords3D:
             """
@@ -337,8 +337,8 @@ class ImpellerGeneration:
             )
             return x_arr, r_arr, theta_arr
 
-        x_low, r_low, theta_low = _shroud_periodic_surface("periodic_low")
-        x_high, r_high, theta_high = _shroud_periodic_surface("periodic_high")
+        x_low, r_low, theta_low = _get_shroud_periodic_surface("periodic_low")
+        x_high, r_high, theta_high = _get_shroud_periodic_surface("periodic_high")
 
         self.imp_3d[str(n_blade)]["shroud_periodic_low"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(

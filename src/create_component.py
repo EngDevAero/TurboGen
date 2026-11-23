@@ -53,7 +53,7 @@ axes_lim = BladePlots3D.get_axes_limit(pts=init_pts)
 # imp_design.plot_meridional_profiles()
 # imp_design.plot_angle_distribution(0.5)
 # imp_design.plot_blade_profile(0.5)
-imp_gen.plot_spline_spanwise(res=imp_design.res)
+# imp_gen.plot_spline_spanwise(res=imp_design.res)
 imp_gen.plot_impeller(
     axes_lim,
     single_passage=True,

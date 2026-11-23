@@ -317,14 +317,11 @@ class ImpellerDesign:
             periodic_high=periodic_high,
         )
 
-    def shroud_wall_values(self):
+    def shroud_wall_values(self) -> None:
         """
         If clearance is specfied, the shroud wall will be offset from the streamline
         contour at span fraction at 1.
         """
-        if not self.shroud_clrance:
-            return
-
         # Offset from blade tip
         x_arr = self.blade["1"]["x_arr"]
         r_arr = self.blade["1"]["r_arr"]
