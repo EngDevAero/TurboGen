@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, TypedDict, TypeVar
 
 import numpy as np
+from numpy.linalg import matrix_power
 import numpy.typing as npt
 
 from matplotlib.figure import Figure
@@ -55,10 +56,10 @@ class CurveSettings(TypedDict):
     phi: float
 
 
-class ImpellerDesignData(TypedDict):
-    axial: Array1D
+class ImpellerBladeData(TypedDict):
+    x_arr: Array1D
+    r_arr: Array1D
     m_prime_arr: Array1D
-    radial: Array1D
     beta_arr: Array1D
     camber: Array1D
     periodic_low: Array1D
@@ -70,13 +71,20 @@ class ImpellerDesignData(TypedDict):
     LE_PS: Array1D
     TE_SS: Array1D
     TE_PS: Array1D
-    curve_settings: CurveSettings
+    curve_settings: CurveSettings | None
 
 
-class ImpellerData(TypedDict):
-    axial: Array1D
+class ImpellerBoundaryData(TypedDict):
+    x_arr: Array1D
+    r_arr: Array1D
+    periodic_low: Array1D
+    periodic_high: Array1D
+
+
+class ImpDesignValsPerSpan(TypedDict):
+    x_arr: Array1D
+    r_arr: Array1D
     m_prime_arr: Array1D
-    radial: Array1D
     beta_arr: Array1D
     camber: Array1D
     periodic_low: Array1D
@@ -86,10 +94,10 @@ class ImpellerData(TypedDict):
     PS: Array1D
 
 
-class ImpellerDataOrdered(TypedDict):
+class ImpCoords2D(TypedDict):
     span_dens: Array1D
-    axial_ordered: Array2D
-    radial_ordered: Array2D
+    x_arr_ordered: Array2D
+    r_arr_ordered: Array2D
     camber_ordered: Array2D
     periodic_low_ordered: Array2D
     periodic_high_ordered: Array2D
@@ -97,21 +105,26 @@ class ImpellerDataOrdered(TypedDict):
     PS_ordered: Array2D
 
 
-class ComponentDict3D(TypedDict):
+class ImpCoords3D(TypedDict):
+    camber: Coords3D
     SS: Coords3D
     PS: Coords3D
-    camber: Coords3D
-    periodic_low: Coords3D
-    periodic_high: Coords3D
     hub_wall: Coords3D
     shroud_wall: Coords3D
+    tip_surface: Coords3D
+    periodic_low: Coords3D
+    periodic_high: Coords3D
+    shroud_periodic_low: Coords3D
+    shroud_periodic_high: Coords3D
 
 
-ImpellerDesignDict = dict[str, ImpellerDesignData]
-ImpellerDataDict = dict[str, ImpellerData]
+ImpellerBladeDict = dict[str, ImpellerBladeData]
+ImpellerBoundaryDict = dict[str, ImpellerBoundaryData]
+ImpDesignVals = dict[str, ImpDesignValsPerSpan]
 ImpellerDataValOrdered = tuple[
     Array1D, Array2D, Array2D, Array2D, Array2D, Array2D, Array2D, Array2D
 ]
+FullImp3D = dict[str, ImpCoords3D]
 
 
 UnpackedCurveSettings = tuple[Point, Point, Point, float, float, float]

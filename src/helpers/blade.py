@@ -10,35 +10,23 @@ from .constants import (
     Array1D,
     Array1DList,
     Array2D,
-    ImpellerDataOrdered,
+    ImpCoords2D,
     ImpellerDataValOrdered,
 )
 from .validations import is_arrays_resolution_match
 
 
 class Blade:
-    """
-    Parameters
-    ----------
-    res: Resolution for all impeller contours.
-
-    Attributes
-    ----------
-    self.res: Resolution for all impeller contours.
-    """
-
-    def __init__(self, res: int):
-        self.res = res
 
     @staticmethod
-    def constant_beta_distribution(
+    def get_constant_beta_distribution(
         m_prime_arr: Array1D, beta: float = np.radians(20)
     ) -> Array1D:
         """Returns an array for the constant beta distribution values across M-Prime."""
         return np.full_like(m_prime_arr, beta)
 
     @staticmethod
-    def theta_distribution_from_beta(
+    def get_theta_distribution_from_beta(
         m_prime_arr: Array1D,
         beta_arr: Array1D,
         theta_start: float,
@@ -49,8 +37,8 @@ class Blade:
 
         Parameters
         ----------
-        m_prime_arr:     A list of M-prime vaules.
-        beta_arr:  Beta distribution across M-prime (rad).
+        m_prime_arr: M-Prime from LE to TE.
+        beta_arr:    Beta distribution from LE to TE (rad).
         theta_start: Theta at M-prime = 0 (rad).
         """
         res = len(beta_arr)
@@ -63,15 +51,17 @@ class Blade:
         return np.array(theta_dtrib)
 
     @staticmethod
-    def constant_blade_thickness_contour(m_prime_arr: Array1D, t_b: float) -> Array1D:
+    def get_constant_blade_thickness_distribution(
+        m_prime_arr: Array1D, t_b: float
+    ) -> Array1D:
         """Returns an array for the constant blade thickness values across M-Prime."""
         return np.full_like(m_prime_arr, t_b)
 
     @staticmethod
-    def base_SS_profile(
+    def get_base_SS(
         m_prime_arr: Array1D,
         camber: Array1D,
-        r: Array1D,
+        r_arr: Array1D,
         t_b_dtrib: Array1D,
     ) -> Array1D:
         """
@@ -79,21 +69,21 @@ class Blade:
 
         Parameters
         ----------
-        m_prime_arr:     M-prime vaules from LE to TE.
-        theta_dtrib: Theta distribution across M-prime (rad).
-        r:           Radius values array of the component (m).
-        t_b_dtrib:   Blade thickness distribution across M-prime (m).
+        m_prime_arr: M-Prime from LE to TE.
+        camber:      Camber line's theta values from LE to TE (rad).
+        r_arr:       Radius values from LE to TE (m).
+        t_b_dtrib:   Blade thickness from LE to TE (m).
         """
-        t_b_dtrib_from_camber = t_b_dtrib / (2 * r)
+        t_b_dtrib_from_camber = t_b_dtrib / (2 * r_arr)
         return Curves.offset_curve(
             m_prime_arr, camber, offset_dtrib=t_b_dtrib_from_camber
         )[1]
 
     @staticmethod
-    def base_PS_profile(
+    def get_base_PS(
         m_prime_arr: Array1D,
         camber: Array1D,
-        r: Array1D,
+        r_arr: Array1D,
         t_b_dtrib: Array1D,
     ) -> Array1D:
         """
@@ -102,18 +92,18 @@ class Blade:
 
         Parameters
         ----------
-        m_prime_arr:     M-prime vaules from LE to TE.
-        camber: Theta distribution across M-prime (rad).
-        r:           Radius values array of the component (m).
-        t_b_dtrib:   Blade thickness distribution across M-prime (m).
+        m_prime_arr: M-Prime from LE to TE.
+        camber:      Camber line's theta values from LE to TE (rad).
+        r_arr:       Radius values from LE to TE (m).
+        t_b_dtrib:   Blade thickness from LE to TE (m).
         """
-        t_b_dtrib_from_camber = -t_b_dtrib / (2 * r)
+        t_b_dtrib_from_camber = -t_b_dtrib / (2 * r_arr)
         return Curves.offset_curve(
             m_prime_arr, camber, offset_dtrib=t_b_dtrib_from_camber
         )[1]
 
     @staticmethod
-    def trim_LE_coordinates(
+    def get_trimmed_LE(
         i_pt: int,
         SS: Array1D,
         PS: Array1D,
@@ -128,11 +118,10 @@ class Blade:
         Parameters
         ----------
         i_pt:        The point of M-Prime from the LE.
-        SS:          Suction surface profile (M-Prime based).
-        PS:          Pressure surface profile (M-Prime based).
-        t_b_dtrib:   Blade thickness distribution (M based).
-        camber: Theta distribution (M-Prime based).
-        m_prime_arr:     M-Prime from LE to TE.
+        SS:          Suction surface profile.
+        PS:          Pressure surface profile.
+        camber:      Camber line's theta values from LE to TE (rad).
+        m_prime_arr: M-Prime from LE to TE.
         """
         is_arrays_resolution_match(SS, PS, camber, m_prime_arr, raise_err=True)
         m_prime_R = m_prime_arr[i_pt] - m_prime_arr[0]
@@ -156,7 +145,7 @@ class Blade:
         return LE_SS, LE_PS
 
     @staticmethod
-    def trim_TE_coordinates(
+    def get_trimmed_TE(
         i_pt: int,
         SS: Array1D,
         PS: Array1D,
@@ -170,11 +159,11 @@ class Blade:
 
         Parameters
         ----------
-        i_pt:        The point of M-Prime from the TE.
-        SS:          Suction surface profile (M-Prime based).
-        PS:          Pressure surface profile (M-Prime based).
-        theta_dtrib: Theta distribution (M-Prime based).
-        m_prime_arr:     M-Prime from LE to TE.
+        i_pt:        The point of M-Prime from the LE.
+        SS:          Suction surface profile.
+        PS:          Pressure surface profile.
+        camber:      Camber line's theta values from LE to TE (rad).
+        m_prime_arr: M-Prime from LE to TE.
         """
         is_arrays_resolution_match(SS, PS, camber, m_prime_arr, raise_err=True)
         i_from_start = len(m_prime_arr) - i_pt
@@ -235,14 +224,14 @@ class Blade:
     @staticmethod
     def sort_blade_surface_lists_by_increasing_span(
         span_frac_arr: Array1D,
-        axial_arr_span: Array1DList,
-        radial_arr_span: Array1DList,
-        camber_arr_span: Array1DList,
-        periodic_low_arr_span: Array1DList,
-        periodic_high_arr_span: Array1DList,
-        SS_arr_span: Array1DList,
-        PS_arr_span: Array1DList,
-    ) -> ImpellerDataValOrdered:
+        x_arr_span: Array1DList,
+        r_arr_span: Array1DList,
+        camber_span: Array1DList,
+        periodic_low_span: Array1DList,
+        periodic_high_span: Array1DList,
+        SS_span: Array1DList,
+        PS_span: Array1DList,
+    ) -> ImpCoords2D:
         """
         Sort the blade surface profile list and relevant blade datas (optional)
         into increasing span fraction order.
@@ -262,43 +251,43 @@ class Blade:
         PS_list:                PS theta values across span (rad).
         """
         is_arrays_resolution_match(
-            axial_arr_span,
-            radial_arr_span,
-            camber_arr_span,
-            periodic_low_arr_span,
-            periodic_high_arr_span,
-            SS_arr_span,
-            PS_arr_span,
+            x_arr_span,
+            r_arr_span,
+            camber_span,
+            periodic_low_span,
+            periodic_high_span,
+            SS_span,
+            PS_span,
             raise_err=True,
         )
 
         order = np.argsort(span_frac_arr)
         span_ordered = np.array(span_frac_arr, dtype=float)[order]
-        axial_ordered = np.stack(axial_arr_span)[order]
-        radial_ordered = np.stack(radial_arr_span)[order]
-        camber_ordered = np.stack(camber_arr_span)[order]
-        periodic_low_ordered = np.stack(periodic_low_arr_span)[order]
-        periodic_high_ordered = np.stack(periodic_high_arr_span)[order]
-        SS_ordered = np.stack(SS_arr_span)[order]
-        PS_ordered = np.stack(PS_arr_span)[order]
-        return (
-            span_ordered,
-            axial_ordered,
-            radial_ordered,
-            camber_ordered,
-            periodic_low_ordered,
-            periodic_high_ordered,
-            SS_ordered,
-            PS_ordered,
-        )
+        axial_ordered = np.stack(x_arr_span)[order]
+        radial_ordered = np.stack(r_arr_span)[order]
+        camber_ordered = np.stack(camber_span)[order]
+        periodic_low_ordered = np.stack(periodic_low_span)[order]
+        periodic_high_ordered = np.stack(periodic_high_span)[order]
+        SS_ordered = np.stack(SS_span)[order]
+        PS_ordered = np.stack(PS_span)[order]
+        return {
+            "span_dens": span_ordered,
+            "x_arr_ordered": axial_ordered,
+            "r_arr_ordered": radial_ordered,
+            "camber_ordered": camber_ordered,
+            "periodic_low_ordered": periodic_low_ordered,
+            "periodic_high_ordered": periodic_high_ordered,
+            "SS_ordered": SS_ordered,
+            "PS_ordered": PS_ordered,
+        }
 
     @staticmethod
-    def spanwise_density(span_arr: Array1D, n_pts: int) -> Array1D:
+    def get_spanwise_density(span_arr: Array1D, n_pts: int) -> Array1D:
         """Create the density fraction array shared by every spline."""
         return np.linspace(span_arr[0], span_arr[-1], n_pts)
 
     @staticmethod
-    def spline_across_span(
+    def get_spline_across_span(
         span_dens: Array1D,
         span_ordered: Array1D,
         values_ordered: Array2D,

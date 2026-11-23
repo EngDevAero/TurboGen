@@ -28,22 +28,10 @@ class InitialBladeValues:
     n_blades: Number of blades.
     """
 
-    wrap_ang: float
     t_B: float
     n_blades: int
 
-
 @dataclass
-class InitialLayers:
-    """
-    Parameters
-    ----------
-    lays_ang: Angle layers, to control the spanwise angle distribution.
-    lays_thk: Thickness layers, to control the spanwise thickness distribution.
-    lays_out: Output layers, across the spanwise sections which the 3D blade
-              is computed.
-    """
-
-    lays_ang: int
-    lays_thk: int
-    lays_out: int
+class PlotSettings:
+    blade_profile_res: int = 500
+    grid_dens: int = 30

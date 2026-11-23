@@ -5,6 +5,8 @@ from typing import Literal, Sequence
 from matplotlib.lines import lineStyles
 import numpy as np
 
+from src.impeller.initial_setup import InitialMeridionalPoints
+from .converters import UnitConverter
 from .constants import (
     Array1D,
     Array2D,
@@ -18,7 +20,6 @@ from .constants import (
     Coords3D,
     FigComponents3D,
 )
-from .converters import UnitConverter
 
 
 class MeridionalPlots:
@@ -271,7 +272,7 @@ class BladePlots2D:
 
 class BladePlots3D:
     @staticmethod
-    def create_figure_3d(axes_lim: float | None = None) -> FigComponents3D:
+    def create_figure(axes_lim: float | None = None) -> FigComponents3D:
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
         ax.set_xlabel("x (m)")
@@ -287,7 +288,20 @@ class BladePlots3D:
         return fig, ax
 
     @staticmethod
-    def plot_blade_surface(cart_coords_3d: Coords3D, ax: AxesFigure3D):
+    def plot_surface(cart_coords_3d: Coords3D, ax: AxesFigure3D, **line_kwargs):
+        # Custom settings
+        settings = {}
+        settings.update(line_kwargs)
+
         ax.set_box_aspect((1, 1, 1))
         x, y, z = cart_coords_3d
-        ax.plot_wireframe(x, y, z, linewidth=0.3)
+        ax.plot_wireframe(x, y, z, **settings)
+
+    @staticmethod
+    def get_axes_limit(pts: InitialMeridionalPoints, f: float = 1.3) -> float:
+        xmax = max(pts.pt_h2[1], pts.pt_s2[1])
+        zmax = max(pts.pt_h2[0], pts.pt_s2[0])
+        zmin = min(pts.pt_h1[0], pts.pt_s1[0])
+        xlim = xmax * 2 * f
+        zlim = (zmax - zmin) * f
+        return max(abs(xlim), abs(zlim))

@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
 
-from .initial_setup import InitialMeridionalPoints, InitialBladeValues, InitialLayers
+from .initial_setup import InitialMeridionalPoints, InitialBladeValues
 from src.helpers import (
     Curves,
     MeridionalPlots,
@@ -21,8 +21,7 @@ from src.helpers import (
 from src.helpers.constants import (
     Point,
     Array1D,
-    ImpellerDesignData,
-    ImpellerDesignDict,
+    ImpellerBladeDict,
     Coords2D,
     CurveSettings,
     UnpackedCurveSettings,
@@ -30,6 +29,7 @@ from src.helpers.constants import (
     Plot2DList,
     AxesFigure2D,
     Coords3D,
+    ImpellerBoundaryDict,
 )
 
 
@@ -37,29 +37,27 @@ class ImpellerDesign:
     """
     Parameters
     ----------
-    init_pts:    All initial setup points for hub/shroud.
-    init_blade:  All initial setup values for impeller blade.
-    theta_start: Theta at M-prime = 0 (rad).
-    res:         Resolution for all impeller contours.
+    init_pts:       All initial setup points for hub/shroud.
+    init_blade:     All initial setup values for impeller blade.
+    theta_start:    Theta at M-prime = 0 (rad).
+    shroud_clrance: Shroud clearance (m).
+    res:            Resolution for all impeller contours.
 
     Attributes
     ----------
-    self._init_pts:   All initial setup points for hub/shroud.
-    self._init_blade: All initial setup values for impeller blade.
-    self.pt_h1:       x and r values of hub inlet location (m).
-    self.pt_h2:       x and r values of hub outlet location (m).
-    self.pt_s1:       x and r values of shroud inlet location (m).
-    self.pt_s2:       x and r values of shroud outlet location (m).
-    self.wrap_ang:    Nominal wrap angle from LE to TE (rad).
-    self.t_b:         Blade thickness (m).
-    self.n_blades:    Number of blades.
-    self.d_periodic:  The theta value from the camber to periodic boundary (rad).
-    self.theta_start: Theta at M-prime = 0 (rad).
-    self.res:         Resolution (number of points) for all impeller contours.
-    self.blade:       Impeller blade class.
-    self.imp_design:  Dictionary containing data about impeller contour lines.
-    self.hub_wall:    x, r values of the hub wall (m).
-    self.shroud_wall: x, r values of the shroud wall (m).
+    self.pt_h1:          x and r values of hub inlet location (m).
+    self.pt_h2:          x and r values of hub outlet location (m).
+    self.pt_s1:          x and r values of shroud inlet location (m).
+    self.pt_s2:          x and r values of shroud outlet location (m).
+    self.t_b:            Constant blade thickness (m).
+    self.n_blades:       Number of blades.
+    self.theta_start:    Theta at LE (rad).
+    self.res:            Resolution (number of points) for all impeller contours.
+    self.shroud_clrance: Shroud clearance (m).
+    self.d_periodic:     Theta value from the camber to periodic boundary (rad).
+    self.blade_class:    Impeller blade class.
+    self.blade:          Impeller blade design values.
+    self.bdary_surf:     Boundary surface values.
     """
 
     def __init__(
@@ -67,94 +65,99 @@ class ImpellerDesign:
         init_pts: InitialMeridionalPoints,
         init_blade: InitialBladeValues,
         theta_start: float = 0,
+        shroud_clrance: float = 0,
         res: int = 500,
     ):
-        # Initial setup values
-        self._init_pts = init_pts
-        self._init_blade = init_blade
-
         # Impeller meridional profile
-        self.pt_h1 = self._init_pts.pt_h1
-        self.pt_h2 = self._init_pts.pt_h2
-        self.pt_s1 = self._init_pts.pt_s1
-        self.pt_s2 = self._init_pts.pt_s2
+        self.pt_h1 = init_pts.pt_h1
+        self.pt_h2 = init_pts.pt_h2
+        self.pt_s1 = init_pts.pt_s1
+        self.pt_s2 = init_pts.pt_s2
 
         # Impeller blade
-        self.wrap_ang = self._init_blade.wrap_ang
-        self.t_b = self._init_blade.t_B
-        self.n_blades = self._init_blade.n_blades
-        self.d_periodic = np.pi / self.n_blades
-
+        self.t_b = init_blade.t_B
+        self.n_blades = init_blade.n_blades
         self.theta_start = theta_start
         self.res = res
+        self.shroud_clrance = shroud_clrance
+        self.d_periodic = np.pi / self.n_blades
 
-        self.blade = Blade(res=self.res)
+        self.blade: ImpellerBladeDict = {}
+        self.bdary_surf: ImpellerBoundaryDict = {}
 
-        self.imp_design: ImpellerDesignDict = {}
-        self.hub_wall: Coords3D = (np.array(0), np.array(0), np.array(0))
-        self.shroud_wall: Coords3D = (np.array(0), np.array(0), np.array(0))
-
-    def compute_profiles_at_span_fractions(
-        self, span_frac_list: list = [0, 0.25, 0.5, 0.75, 1]
+    def blade_values_spanwise(
+        self,
+        span_frac_list: list = [0, 0.25, 0.5, 0.75, 1],
+        i_pt_LE: int | None = None,
+        i_pt_TE: int | None = None,
     ) -> None:
         """Compute all the values for the meridional profile."""
         # Streamlines at the set span fractions
-        plots = []
-        coords_2d_list = []
         for span_frac in span_frac_list:
-            coords_2d_list.append(
-                self.compute_impeller_data_at_span_fraction(span_frac)
+            (x_arr, r_arr), curve_settings = self._get_streamline_coordinates(span_frac)
+            self._blade_values(
+                x_arr=x_arr,
+                r_arr=r_arr,
+                curve_settings=curve_settings,
+                span_frac=str(span_frac),
             )
 
-    def compute_impeller_data_at_span_fraction(
-        self, span_frac: float, i_pt_LE: int = 13, i_pt_TE: int = 50
-    ) -> Coords2D:
+    def _blade_values(
+        self,
+        x_arr: Array1D,
+        r_arr: Array1D,
+        span_frac: str,
+        curve_settings: CurveSettings | None = None,
+        i_pt_LE: int = 13,
+        i_pt_TE: int = 50,
+    ) -> None:
         """
-        The main function for calculating all the component data that is required
-        for it's construction, store all the component data in this instance
-        attribute dictionary self.imp_design to avoid calculating the same
-        data again.
+        The main function for calculating all the required values for constructing
+        the blade. The calculated values will be stored in self.blade to avoid
+        calculating the same data again.
 
         Parameters
         ----------
-        span_frac: Current span fraction.
-        i_pt_LE:   Number of points from LE, useful for LE trimming.
-        i_pt_TE:   Number of points from TE, useful for TE trimming.
+        x_arr:          Axial values from LE to TE (m).
+        r_arr:          Radius values from LE to TE (m).
+        span_frac:      Current span fraction.
+        curve_settings: Curve settings for recreating the curve.
+        i_pt_LE:        Number of points from LE, useful for LE trimming.
+        i_pt_TE:        Number of points from TE, useful for TE trimming.
         """
-
-        (x, r), curve_settings = self.estimate_streamline_coordinates(span_frac)
-
         # M-Prime (LE to TE)
-        m_prime_arr = UnitConverter.axial_to_m_prime(x=x, r=r)
+        m_prime_arr = UnitConverter.axial_to_m_prime(x=x_arr, r=r_arr)
 
         # Angle distribution
-        beta_arr = self.blade.constant_beta_distribution(m_prime_arr)
-        camber = self.blade.theta_distribution_from_beta(
+        beta_arr = Blade.get_constant_beta_distribution(m_prime_arr)
+        camber = Blade.get_theta_distribution_from_beta(
             m_prime_arr=m_prime_arr, beta_arr=beta_arr, theta_start=self.theta_start
         )
         periodic_low = camber - self.d_periodic
         periodic_high = camber + self.d_periodic
 
         # Thickness distribution
-        t_b_dtrib = self.blade.constant_blade_thickness_contour(m_prime_arr, self.t_b)
+        t_b_dtrib = Blade.get_constant_blade_thickness_distribution(
+            m_prime_arr, self.t_b
+        )
 
         # Base blade surface profile
-        base_SS = self.blade.base_SS_profile(
-            m_prime_arr=m_prime_arr, camber=camber, r=r, t_b_dtrib=t_b_dtrib
+        base_SS = Blade.get_base_SS(
+            m_prime_arr=m_prime_arr, camber=camber, r_arr=r_arr, t_b_dtrib=t_b_dtrib
         )
-        base_PS = self.blade.base_PS_profile(
-            m_prime_arr=m_prime_arr, camber=camber, r=r, t_b_dtrib=t_b_dtrib
+        base_PS = Blade.get_base_PS(
+            m_prime_arr=m_prime_arr, camber=camber, r_arr=r_arr, t_b_dtrib=t_b_dtrib
         )
 
         # Trim blade LE and TE
-        LE_SS, LE_PS = self.blade.trim_LE_coordinates(
+        LE_SS, LE_PS = Blade.get_trimmed_LE(
             i_pt=i_pt_LE,
             SS=base_SS,
             PS=base_PS,
             camber=camber,
             m_prime_arr=m_prime_arr,
         )
-        TE_SS, TE_PS = self.blade.trim_TE_coordinates(
+        TE_SS, TE_PS = Blade.get_trimmed_TE(
             i_pt=i_pt_TE,
             SS=base_SS,
             PS=base_PS,
@@ -162,11 +165,12 @@ class ImpellerDesign:
             m_prime_arr=m_prime_arr,
         )
 
-        self._update_impeller_dictionary_at_span_fraction(
+        # Update self.blade dictionary
+        self._add_blade_data(
             span_frac=span_frac,
-            axial=x,
+            x_arr=x_arr,
+            r_arr=r_arr,
             m_prime_arr=m_prime_arr,
-            radial=r,
             beta_arr=beta_arr,
             camber=camber,
             periodic_low=periodic_low,
@@ -180,9 +184,8 @@ class ImpellerDesign:
             TE_PS=TE_PS,
             curve_settings=curve_settings,
         )
-        return x, r
 
-    def estimate_streamline_coordinates(
+    def _get_streamline_coordinates(
         self, span_frac: float
     ) -> tuple[Coords2D, CurveSettings]:
         """
@@ -216,12 +219,12 @@ class ImpellerDesign:
             curve_settings,
         )
 
-    def _update_impeller_dictionary_at_span_fraction(
+    def _add_blade_data(
         self,
-        span_frac: float,
-        axial: Array1D,
+        span_frac: str,
+        x_arr: Array1D,
+        r_arr: Array1D,
         m_prime_arr: Array1D,
-        radial: Array1D,
         beta_arr: Array1D,
         camber: Array1D,
         periodic_low: Array1D,
@@ -233,34 +236,38 @@ class ImpellerDesign:
         LE_PS: Array1D,
         TE_SS: Array1D,
         TE_PS: Array1D,
-        curve_settings: CurveSettings,
+        curve_settings: CurveSettings | None,
     ) -> None:
         """
         Add/overwrite the impeller data at the specfied span fraction in this instance
-        attribute dictionary self.imp_design.
+        attribute dictionary self.blade.
 
         Parameters
         ----------
         span_frac:      Current span fraction.
-        axial:          Axial from LE to TE (m).
-        m_prime_arr:        M-Prime from LE to TE.
-        radial:         Radius across the axial direction (m).
-        beta_arr:     Beta distribution across M-Prime (rad).
-        camber:         Camber line's theta values across M-Prime (rad).
-        t_b_dtrib:      Blade thickness distribution (m).
-        base_SS:        Base SS profile (rad).
-        base_PS:        Base SS profile (rad).
-        LE_SS:          SS theta values at the LE section (rad).
-        LE_PS:          PS theta values at the LE section (rad).
-        TE_SS:          SS theta values at the TE section (rad).
-        TE_PS:          PS theta values at the TE section (rad).
+        x_arr:          Axial values from LE to TE (m).
+        r_arr:          Radius values from LE to TE (m).
+        m_prime_arr:    M-Prime from LE to TE.
+        beta_arr:       Beta distribution from LE to TE (rad).
+        camber:         Camber line's theta values from LE to TE (rad).
+        periodic_low:   Theta values from LE to TE where it's half way between current
+                        and pervious camber (rad).
+        periodic_high:  Theta values from LE to TE where it's half way between current
+                        and next camber (rad).
+        t_b_dtrib:      Blade thickness from LE to TE (m).
+        base_SS:        Theta values from LE to TE of the base SS profile (rad).
+        base_PS:        Theta values from LE to TE of the base SS profile (rad).
+        LE_SS:          Theta values at the LE section of SS (rad).
+        LE_PS:          Theta values at the LE section of PS (rad).
+        TE_SS:          Theta values at the TE section of SS (rad).
+        TE_PS:          Theta values at the TE section of PS (rad).
         curve_settings: Control points, alpha and phi for recreating the curve.
         """
         # Entire blade profile resolution
         is_arrays_resolution_match(
-            axial,
+            x_arr,
+            r_arr,
             m_prime_arr,
-            radial,
             beta_arr,
             camber,
             t_b_dtrib,
@@ -273,11 +280,11 @@ class ImpellerDesign:
         is_arrays_resolution_match(LE_SS, LE_PS, raise_err=True)
         is_arrays_resolution_match(TE_SS, TE_PS, raise_err=True)
 
-        # Save design data
-        self.imp_design[str(span_frac)] = {
-            "axial": axial,
+        # Add design values
+        self.blade[span_frac] = {
+            "x_arr": x_arr,
+            "r_arr": r_arr,
             "m_prime_arr": m_prime_arr,
-            "radial": radial,
             "beta_arr": beta_arr,
             "camber": camber,
             "periodic_low": periodic_low,
@@ -289,73 +296,129 @@ class ImpellerDesign:
             "LE_PS": LE_PS,
             "TE_SS": TE_SS,
             "TE_PS": TE_PS,
-            "curve_settings": curve_settings,
+            "curve_settings": curve_settings if curve_settings else None,
         }
 
-    def set_hub_wall_streamwise_coordinates(self):
+    def hub_wall_values(self):
         """
         The hub wall streamwise contour is same as the streamline contour at
         span fraction at 0.
         """
-        x_arr = self.imp_design["0"]["axial"]
-        r_arr = self.imp_design["0"]["radial"]
-        theta_arr = (
-            self.imp_design["0"]["periodic_high"] - self.imp_design["0"]["periodic_low"]
-        )
-        self.hub_wall = x_arr, r_arr, theta_arr
+        x_arr = self.blade["0"]["x_arr"]
+        r_arr = self.blade["0"]["r_arr"]
+        periodic_low = self.blade["0"]["periodic_high"]
+        periodic_high = self.blade["0"]["periodic_low"]
 
-    def set_shroud_wall_streamwise_coordinates(self, d_clearance: float | None = None):
+        self._add_boundary_surface_values(
+            surf="hub_wall",
+            x_arr=x_arr,
+            r_arr=r_arr,
+            periodic_low=periodic_low,
+            periodic_high=periodic_high,
+        )
+
+    def shroud_wall_values(self):
         """
         If clearance is specfied, the shroud wall will be offset from the streamline
         contour at span fraction at 1.
         """
-        x_arr = self.imp_design["1"]["axial"]
-        r_arr = self.imp_design["1"]["radial"]
-        theta_arr = (
-            self.imp_design["1"]["periodic_high"] - self.imp_design["0"]["periodic_low"]
-        )
+        if not self.shroud_clrance:
+            return
 
-        if not d_clearance:
-            self.shroud_wall = x_arr, r_arr, theta_arr
+        # Offset from blade tip
+        x_arr = self.blade["1"]["x_arr"]
+        r_arr = self.blade["1"]["r_arr"]
+        periodic_low = self.blade["1"]["periodic_high"]
+        periodic_high = self.blade["1"]["periodic_low"]
+
+        if not self.shroud_clrance:
+            self._add_boundary_surface_values(
+                surf="shroud_wall",
+                x_arr=x_arr,
+                r_arr=r_arr,
+                periodic_low=periodic_low,
+                periodic_high=periodic_high,
+            )
         else:
             x_offset_arr, r_offset_arr = Curves.offset_curve(
-                x=x_arr, y=r_arr, offset_dis=d_clearance
+                x=x_arr, y=r_arr, offset_dis=self.shroud_clrance
             )
-            self.shroud_wall = x_offset_arr, r_offset_arr, theta_arr
+            self._add_boundary_surface_values(
+                surf="shroud_wall",
+                x_arr=x_offset_arr,
+                r_arr=r_offset_arr,
+                periodic_low=periodic_low,
+                periodic_high=periodic_high,
+            )
 
-    def plot_all_meridional_profiles(self) -> None:
+    def blade_tip_values(self):
         """
-        Plot all the streamlines at span fraction profile stored in
-        self.imp_design.
+        The blade tip streamwise contour is same as the streamline contour at
+        span fraction at 1.
         """
+        x_arr = self.blade["1"]["x_arr"]
+        r_arr = self.blade["1"]["r_arr"]
+        periodic_low = self.blade["1"]["periodic_high"]
+        periodic_high = self.blade["1"]["periodic_low"]
+
+        self._add_boundary_surface_values(
+            surf="tip_surface",
+            x_arr=x_arr,
+            r_arr=r_arr,
+            periodic_low=periodic_low,
+            periodic_high=periodic_high,
+        )
+
+    def _add_boundary_surface_values(
+        self,
+        surf: str,
+        x_arr: Array1D,
+        r_arr: Array1D,
+        periodic_low: Array1D,
+        periodic_high: Array1D,
+    ):
+        """
+        Parameters
+        ----------
+        surf:          Surface name.
+        x_arr:         Axial values from LE to TE (m).
+        r_arr:         Radius values from LE to TE (m).
+        periodic_low:  Theta values from LE to TE where it's half way between current
+                       and pervious camber (rad).
+        periodic_high: Theta values from LE to TE where it's half way between current
+                       and next camber (rad).
+        """
+        self.bdary_surf[surf] = {
+            "x_arr": x_arr,
+            "r_arr": r_arr,
+            "periodic_low": periodic_low,
+            "periodic_high": periodic_high,
+        }
+
+    def plot_meridional_profiles(self) -> None:
         fig, ax = MeridionalPlots.create_meridional_figure()
 
-        for key, value in self.imp_design.items():
+        for key, value in self.blade.items():
             MeridionalPlots.plot_meridional_contour(
-                x_arr=value["axial"], r_arr=value["radial"], span_frac=key, ax=ax
+                x_arr=value["x_arr"], r_arr=value["r_arr"], span_frac=key, ax=ax
             )
         self._plot_meridional_profile_boundary(ax)
         ax.grid()
         fig.legend()
 
     def _plot_meridional_profile_boundary(self, ax: AxesFigure2D) -> None:
-        """Plot the boundary of the meridional profile."""
         # Boundary lines
         MeridionalPlots.plot_meridional_component_axis(
-            x_arr=self.imp_design["0"]["axial"], ax=ax
+            x_arr=self.blade["0"]["x_arr"], ax=ax
         )
         MeridionalPlots.plot_inlet_normal(self.pt_h1, self.pt_s1, ax=ax)
         MeridionalPlots.plot_outlet_normal(self.pt_h2, self.pt_s2, ax=ax)
 
-    def plot_angle_distribution_at_span_fraction(self, span_frac: float) -> None:
-        """
-        Plot the beta distribution and the blade camber across M-prime (LE to TE)
-        at the specfied span fraction using the data stored in self.imp_design.
-        """
+    def plot_angle_distribution(self, span_frac: float) -> None:
         fig, ax = BladePlots2D.create_angle_distribution_figure()
 
         span_frac_str = str(span_frac)
-        imp_design = self.imp_design[span_frac_str]
+        imp_design = self.blade[span_frac_str]
         BladePlots2D.plot_beta_distribution_at_span_fraction(
             m_prime_arr=imp_design["m_prime_arr"],
             beta_arr=imp_design["beta_arr"],
@@ -371,28 +434,21 @@ class ImpellerDesign:
         ax.grid()
         fig.legend()
 
-    def plot_blade_profile_at_span_fraction(
+    def plot_blade_profile(
         self,
         span_frac: float,
     ) -> Plot2DList | None:
-        """
-        Plot the theta distribution for blade camber and surface across M-prime (LE to TE)
-        at the specfied span fraction using the data stored in self.imp_design.
-
-        The applied trimmed edges is only used for plotting and won't overwrite the
-        theta values of the base blade surface profiles in self.imp_design.
-        """
         fig, ax = BladePlots2D.create_blade_profile_figure()
 
         span_frac_str = str(span_frac)
-        imp_design = self.imp_design[span_frac_str]
-        SS, PS = self.blade.trim_LE(
+        imp_design = self.blade[span_frac_str]
+        SS, PS = Blade.trim_LE(
             LE_SS=imp_design["LE_SS"],
             LE_PS=imp_design["LE_PS"],
             SS=imp_design["base_SS"],
             PS=imp_design["base_PS"],
         )
-        SS, PS = self.blade.trim_TE(
+        SS, PS = Blade.trim_TE(
             TE_SS=imp_design["TE_SS"], TE_PS=imp_design["TE_PS"], SS=SS, PS=PS
         )
 
