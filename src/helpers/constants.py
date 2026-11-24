@@ -107,16 +107,37 @@ class ImpCoords2D(TypedDict):
 
 
 class ImpCoords3D(TypedDict):
-    camber: Coords3D
+    # --- Blade surfaces ---
     SS: Coords3D
     PS: Coords3D
+    # --- Hub walls ---
     hub_wall: Coords3D
+    inlet_hub_wall: Coords3D
+    outlet_hub_wall: Coords3D
+    # --- Shroud walls ---
     shroud_wall: Coords3D
+    inlet_shroud_wall: Coords3D
+    outlet_shroud_wall: Coords3D
+    # --- Tip surfaces ---
     tip_surface: Coords3D
+    inlet_tip_surface: Coords3D
+    outlet_tip_surface: Coords3D
+    # --- Periodic lows ---
     periodic_low: Coords3D
+    inlet_periodic_low: Coords3D
+    outlet_periodic_low: Coords3D
+    # --- Periodic highs ---
     periodic_high: Coords3D
+    inlet_periodic_high: Coords3D
+    outlet_periodic_high: Coords3D
+    # --- Shroud periodic lows ---
     shroud_periodic_low: Coords3D
+    inlet_shroud_periodic_low: Coords3D
+    outlet_shroud_periodic_low: Coords3D
+    # --- Shroud periodic highss ---
     shroud_periodic_high: Coords3D
+    inlet_shroud_periodic_high: Coords3D
+    outlet_shroud_periodic_high: Coords3D
 
 
 ImpellerBladeDict = dict[str, ImpellerBladeData]

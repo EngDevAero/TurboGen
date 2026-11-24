@@ -28,9 +28,7 @@ i_pt_TE = 50
 
 # Design
 def boundary_domain_values(imp_design: ImpellerDesign):
-    imp_design.hub_wall_values()
-    imp_design.shroud_wall_values()
-    imp_design.blade_tip_values()
+    imp_design.blade_passage_domain_values()
     imp_design.inlet_domain_values()
     imp_design.outlet_domain_values()
 
@@ -51,7 +49,7 @@ imp_gen = ImpellerGeneration(
 )
 imp_gen.pre_process_design_values()
 imp_gen.spline_spanwise()
-imp_gen.boundary_surfaces()
+imp_gen.domain_boundaries()
 imp_gen.convert_to_cartesian_3d()
 
 # Plots
@@ -75,14 +73,36 @@ imp_gen.plot_impeller(
 )
 imp_gen.plot_impeller(
     axes_lim,
+    # --- Blade surfaces ---
     # SS=False,
     # PS=False,
-    tip_surface=False,
+    # --- Hub walls ---
     # hub_wall=False,
+    # inlet_hub_wall=False,
+    outlet_hub_wall=False,
+    # --- Shroud walls ---
     shroud_wall=False,
+    inlet_shroud_wall=False,
+    outlet_shroud_wall=False,
+    # --- Tip surfaces ---
+    tip_surf=False,
+    inlet_tip_surf=False,
+    outlet_tip_surf=False,
+    # --- Periodic lows ---
     periodic_low=False,
+    inlet_periodic_low=False,
+    outlet_periodic_low=False,
+    # --- Periodic highs ---
     periodic_high=False,
+    inlet_periodic_high=False,
+    outlet_periodic_high=False,
+    # --- Shroud periodic lows ---
     shroud_periodic_low=False,
+    inlet_shroud_periodic_low=False,
+    outlet_shroud_periodic_low=False,
+    # --- Shroud periodic highss ---
     shroud_periodic_high=False,
+    inlet_shroud_periodic_high=False,
+    outlet_shroud_periodic_high=False,
 )
 plt.show()
