@@ -47,24 +47,49 @@ class ImpellerGeneration:
 
     Attributes
     ----------
-    self.grid_dens:        Grid density of the 3D geometry.
-    self.theta_direct:     Rotational direction of theta.
-    self.imp_design:       Impeller design class.
-    self.d_periodic:       Theta value from the camber to periodic boundary (rad).
-    self.n_blades:         Number of blades of the impeller.
+    # --- Set ups ---
+    self.grid_dens:    Grid density of the 3D geometry.
+    self.theta_direct: Rotational direction of theta.
+    # --- Design ---
+    self.imp_design: Impeller design class.
+    self.d_periodic: Theta value from the camber to periodic boundary (rad).
+    self.n_blades:   Number of blades of the impeller.
+    # --- Component ---
+    self.imp_design_vals: Imported design data from the impeller design process instance's
+                          dictionary with LE and TE trimming applied, that is ready for
+                          pre-processing prior the 3D geometry generation.
+    self.imp_gen_val:     Processed and ordered cylindrical coordinate values that is ready
+                          for the converstion to Cartesian coordinate values.
+    self.imp_3d:          3D cartesian coordinates of the blade.
+    self.imp_2d:          2D coordinates of the impeller.
+    # --- Domains ---
     self.blade_pass_dmain: Blade passage domain.
     self.inlet_dmain:      Inlet domain.
     self.outlet_dmain:     Outlet domain.
-    self.imp_design_vals:  Imported design data from the impeller design process instance's
-                           dictionary with LE and TE trimming applied, that is ready for
-                           pre-processing prior the 3D geometry generation.
-    self.imp_gen_val:      Processed and ordered cylindrical coordinate values that is ready
-                           for the converstion to Cartesian coordinate values.
-    self.imp_3d:           3D cartesian coordinates of the blade.
-    self.imp_2d:           2D coordinates of the impeller.
-    self.hub_wall:         3D coordinates of the hub wall.
-    self.shroud_wall:      3D coordinates of the shroud wall.
-    self.tip_surf:         3D coordinates of the tip surface.
+    # --- Wall surfaces ---
+    self.hub_wall:    3D coordinates of the hub wall.
+    self.shroud_wall: 3D coordinates of the shroud wall.
+    self.tip_surf:    3D coordinates of the tip surface.
+    # --- Inlet domain ---
+    self.inlet_shroud_wall: 3D coordinates of the gap between blade tip and shroud wall at the
+                            inlet of the inlet domain.
+    self.inlet_tip_surf:    3D coordinates of the surface on blade tip at the inlet of the inlet domain.
+    self.inlet_periodic:    (x, r, theta, theta) values of the inlet domain's periodic surfaces.
+    # --- Outlet domain ---
+    self.outlet_hub_wall:    3D coordinates of the hub wall at the outlet domain.
+    self.outlet_shroud_wall: 3D coordinates of the shroud wall at the outlet domain.
+    self.outlet_tip_surf:    3D coordinates of the surface on blade tip at the outlet of the outlet domain.
+    self.outlet_periodic:    (x, r, theta, theta) values of the outlet domain's periodic surfaces.
+    # --- Inlet/Outlet domains inlet/outlet surfaces ---
+    self.inlet_in_surf:   3D coordinates of the hub to tip surface at the inlet of the inlet domain.
+    self.inlet_out_surf:  3D coordinates of the hub to tip surface at the outlet of the inlet domain.
+    self.outlet_in_surf:  3D coordinates of the hub to tip surface at the inlet of the outlet domain.
+    self.outlet_out_surf: 3D coordinates of the hub to tip surface at the outlet of the outlet domain.
+    # --- Inlet/Outlet domains shroud inlet/outlet surfaces ---
+    self.shroud_inlet_in_surf:   3D coordinates of the tip to shroud surface at the inlet of the inlet domain.
+    self.shroud_inlet_out_surf:  3D coordinates of the tip to shroud surface at the outlet of the inlet domain.
+    self.shroud_outlet_in_surf:  3D coordinates of the tip to shroud surface at the inlet of the outlet domain.
+    self.shroud_outlet_out_surf: 3D coordinates of the tip to shroud surface at the outlet of the outlet domain.
     """
 
     def __init__(
@@ -222,7 +247,7 @@ class ImpellerGeneration:
             self.blade_pass_dmain, "shroud_wall"
         )
         self.tip_surf = self._get_domain_boundary_coordinates(
-            self.blade_pass_dmain, "tip_surface"
+            self.blade_pass_dmain, "tip_surf"
         )
 
         # Inlet domain
@@ -233,7 +258,7 @@ class ImpellerGeneration:
             self.inlet_dmain, "shroud_wall"
         )
         self.inlet_tip_surf = self._get_domain_boundary_coordinates(
-            self.inlet_dmain, "tip_surface"
+            self.inlet_dmain, "tip_surf"
         )
         self.inlet_periodic = self._get_extended_domain_values(
             self.inlet_dmain, "inlet"
@@ -247,14 +272,14 @@ class ImpellerGeneration:
             self.outlet_dmain, "shroud_wall"
         )
         self.outlet_tip_surf = self._get_domain_boundary_coordinates(
-            self.outlet_dmain, "tip_surface"
+            self.outlet_dmain, "tip_surf"
         )
         self.outlet_periodic = self._get_extended_domain_values(
             self.outlet_dmain, "outlet"
         )
 
     def _get_domain_boundary_coordinates(
-        self, dmain_dict, surf: Literal["hub_wall", "tip_surface", "shroud_wall"]
+        self, dmain_dict, surf: Literal["hub_wall", "tip_surf", "shroud_wall"]
     ) -> Coords3D:
         """
         Calculate the cylindrical coordinates of the end wall surface that is
@@ -277,7 +302,10 @@ class ImpellerGeneration:
         dmain_dict,
         dmain: Literal["inlet", "outlet"],
     ):
-        """Calculate x, r, periodic_low, and periodic_high values at either inlet or outlet domain."""
+        """
+        Calculate x, r, periodic_low, and periodic_high values at either inlet or outlet domain
+        for the creation of the periodic surfaces at both domains.
+        """
         col = 0 if dmain == "inlet" else -1
         x_blade = self.imp_gen_val["x_arr_ordered"][:, col]
         r_blade = self.imp_gen_val["r_arr_ordered"][:, col]
@@ -289,10 +317,10 @@ class ImpellerGeneration:
         hub_periodic_low = dmain_dict["hub_wall"]["periodic_low"][col]
         hub_periodic_high = dmain_dict["hub_wall"]["periodic_high"][col]
 
-        x_t_dmain = dmain_dict["tip_surface"]["x_arr"][col]
-        r_t_dmain = dmain_dict["tip_surface"]["r_arr"][col]
-        tip_periodic_low = dmain_dict["tip_surface"]["periodic_low"][col]
-        tip_periodic_high = dmain_dict["tip_surface"]["periodic_high"][col]
+        x_t_dmain = dmain_dict["tip_surf"]["x_arr"][col]
+        r_t_dmain = dmain_dict["tip_surf"]["r_arr"][col]
+        tip_periodic_low = dmain_dict["tip_surf"]["periodic_low"][col]
+        tip_periodic_high = dmain_dict["tip_surf"]["periodic_high"][col]
 
         span = self.imp_gen_val["span_dens"]
         x_pts = x_h_dmain + span * (x_t_dmain - x_h_dmain)
@@ -322,6 +350,108 @@ class ImpellerGeneration:
         )
         return x_ext, r_ext, periodic_low_ext, periodic_high_ext
 
+    def inlet_outlet_surfaces(self):
+        """Calculate the inlet/outlet surfaces of the inlet/outlet domains."""
+
+        def _get_row_values(dmain_dict, col_loc: Literal["first", "last"]) -> Coords3D:
+            col = 0 if col_loc == "first" else -1
+            x_n, r_n, theta_n = (a[:, col] for a in np.array(dmain_dict))
+            return x_n, r_n, theta_n
+
+        def _get_coordinates(
+            hub_dmain_dict,
+            tip_dmain_dict,
+            col_loc: Literal["first", "last"],
+            grid_dens: int,
+        ):
+            x_in_h, r_in_h, theta_in_h = _get_row_values(hub_dmain_dict, col_loc)
+            x_in_t, r_in_t, theta_in_t = _get_row_values(tip_dmain_dict, col_loc)
+
+            x_inlet_in = []
+            r_inlet_in = []
+            theta_inlet_in = []
+            for i in range(len(np.array(x_in_h))):
+                x_inlet_in.append(
+                    np.linspace(np.array(x_in_h)[i], np.array(x_in_t)[i], grid_dens)
+                )
+                r_inlet_in.append(
+                    np.linspace(np.array(r_in_h)[i], np.array(r_in_t)[i], grid_dens)
+                )
+                theta_inlet_in.append(
+                    np.linspace(
+                        np.array(theta_in_h)[i], np.array(theta_in_t)[i], grid_dens
+                    )
+                )
+            return np.array(x_inlet_in), np.array(r_inlet_in), np.array(theta_inlet_in)
+
+        # Inlet/Outlet surfaces
+        x_inlet_in, r_inlet_in, theta_inlet_in = _get_coordinates(
+            self.inlet_hub_wall, self.inlet_tip_surf, "first", self.grid_dens
+        )
+        x_inlet_out, r_inlet_out, theta_inlet_out = _get_coordinates(
+            self.inlet_hub_wall, self.inlet_tip_surf, "last", self.grid_dens
+        )
+        x_outlet_in, r_outlet_in, theta_outlet_in = _get_coordinates(
+            self.outlet_hub_wall, self.outlet_tip_surf, "first", self.grid_dens
+        )
+        x_outlet_out, r_outlet_out, theta_outlet_out = _get_coordinates(
+            self.outlet_hub_wall, self.outlet_tip_surf, "last", self.grid_dens
+        )
+        self.inlet_in_surf = (
+            x_inlet_in,
+            r_inlet_in,
+            theta_inlet_in,
+        )
+        self.inlet_out_surf = (
+            x_inlet_out,
+            r_inlet_out,
+            theta_inlet_out,
+        )
+        self.outlet_in_surf = (
+            x_outlet_in,
+            r_outlet_in,
+            theta_outlet_in,
+        )
+        self.outlet_out_surf = (
+            x_outlet_out,
+            r_outlet_out,
+            theta_outlet_out,
+        )
+
+        # Shroud inlet/outlet surfaces
+        x_shroud_inlet_in, r_shroud_inlet_in, theta_shroud_inlet_in = _get_coordinates(
+            self.inlet_shroud_wall, self.inlet_tip_surf, "first", 2
+        )
+        x_shroud_inlet_out, r_shroud_inlet_out, theta_shroud_inlet_out = (
+            _get_coordinates(self.inlet_shroud_wall, self.inlet_tip_surf, "last", 2)
+        )
+        x_shroud_outlet_in, r_shroud_outlet_in, theta_shroud_outlet_in = (
+            _get_coordinates(self.outlet_shroud_wall, self.outlet_tip_surf, "first", 2)
+        )
+        x_shroud_outlet_out, r_shroud_outlet_out, theta_shroud_outlet_out = (
+            _get_coordinates(self.outlet_shroud_wall, self.outlet_tip_surf, "last", 2)
+        )
+        self.shroud_inlet_in_surf = (
+            x_shroud_inlet_in,
+            r_shroud_inlet_in,
+            theta_shroud_inlet_in,
+        )
+        self.shroud_inlet_out_surf = (
+            x_shroud_inlet_out,
+            r_shroud_inlet_out,
+            theta_shroud_inlet_out,
+        )
+        self.shroud_outlet_in_surf = (
+            x_shroud_outlet_in,
+            r_shroud_outlet_in,
+            theta_shroud_outlet_in,
+        )
+        self.shroud_outlet_out_surf = (
+            x_shroud_outlet_out,
+            r_shroud_outlet_out,
+            theta_shroud_outlet_out,
+        )
+
     def convert_to_cartesian_3d(self) -> None:
         """
         Convert the cylindrical coordinates of the impeller to 3D Cartesian, and
@@ -335,16 +465,17 @@ class ImpellerGeneration:
             self._blade_tip_to_cartesian_3D(n_blade, pitch)
             self._periodic_to_cartesian_3D(n_blade, pitch)
             self._shroud_periodic_to_cartesian_3D(n_blade, pitch)
+            self._inlet_outlet_surfaces_to_cartesian_3D(n_blade, pitch)
 
-    def _blade_surface_to_cartesian_3D(self, n, pitch):
-        self.imp_3d[str(n)]["SS"] = (
+    def _blade_surface_to_cartesian_3D(self, n_blade, pitch):
+        self.imp_3d[str(n_blade)]["SS"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.imp_gen_val["x_arr_ordered"],
                 r=self.imp_gen_val["r_arr_ordered"],
                 theta=self.theta_direct * (self.imp_gen_val["SS_ordered"] + pitch),
             )
         )
-        self.imp_3d[str(n)]["PS"] = (
+        self.imp_3d[str(n_blade)]["PS"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.imp_gen_val["x_arr_ordered"],
                 r=self.imp_gen_val["r_arr_ordered"],
@@ -352,22 +483,22 @@ class ImpellerGeneration:
             )
         )
 
-    def _blade_tip_to_cartesian_3D(self, n, pitch):
-        self.imp_3d[str(n)]["tip_surface"] = (
+    def _blade_tip_to_cartesian_3D(self, n_blade, pitch):
+        self.imp_3d[str(n_blade)]["tip_surf"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.tip_surf[0],
                 r=self.tip_surf[1],
                 theta=self.theta_direct * (self.tip_surf[2] + pitch),
             )
         )
-        self.imp_3d[str(n)]["inlet_tip_surface"] = (
+        self.imp_3d[str(n_blade)]["inlet_tip_surf"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.inlet_tip_surf[0],
                 r=self.inlet_tip_surf[1],
                 theta=self.theta_direct * (self.inlet_tip_surf[2] + pitch),
             )
         )
-        self.imp_3d[str(n)]["outlet_tip_surface"] = (
+        self.imp_3d[str(n_blade)]["outlet_tip_surf"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.outlet_tip_surf[0],
                 r=self.outlet_tip_surf[1],
@@ -375,47 +506,108 @@ class ImpellerGeneration:
             )
         )
 
-    def _blade_end_walls_to_cartesian_3D(self, n, pitch):
-        self.imp_3d[str(n)]["hub_wall"] = (
+    def _blade_end_walls_to_cartesian_3D(self, n_blade, pitch):
+        self.imp_3d[str(n_blade)]["hub_wall"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.hub_wall[0],
                 r=self.hub_wall[1],
                 theta=self.theta_direct * (self.hub_wall[2] + pitch),
             )
         )
-        self.imp_3d[str(n)]["shroud_wall"] = (
+        self.imp_3d[str(n_blade)]["shroud_wall"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.shroud_wall[0],
                 r=self.shroud_wall[1],
                 theta=self.theta_direct * (self.shroud_wall[2] + pitch),
             )
         )
-        self.imp_3d[str(n)]["inlet_hub_wall"] = (
+        self.imp_3d[str(n_blade)]["inlet_hub_wall"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.inlet_hub_wall[0],
                 r=self.inlet_hub_wall[1],
                 theta=self.theta_direct * (self.inlet_hub_wall[2] + pitch),
             )
         )
-        self.imp_3d[str(n)]["inlet_shroud_wall"] = (
+        self.imp_3d[str(n_blade)]["inlet_shroud_wall"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.inlet_shroud_wall[0],
                 r=self.inlet_shroud_wall[1],
                 theta=self.theta_direct * (self.inlet_shroud_wall[2] + pitch),
             )
         )
-        self.imp_3d[str(n)]["outlet_hub_wall"] = (
+        self.imp_3d[str(n_blade)]["outlet_hub_wall"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.outlet_hub_wall[0],
                 r=self.outlet_hub_wall[1],
                 theta=self.theta_direct * (self.outlet_hub_wall[2] + pitch),
             )
         )
-        self.imp_3d[str(n)]["outlet_shroud_wall"] = (
+        self.imp_3d[str(n_blade)]["outlet_shroud_wall"] = (
             CoordinateConverter.cylindrical_to_cartesian_coordinates(
                 x=self.outlet_shroud_wall[0],
                 r=self.outlet_shroud_wall[1],
                 theta=self.theta_direct * (self.outlet_shroud_wall[2] + pitch),
+            )
+        )
+
+    def _inlet_outlet_surfaces_to_cartesian_3D(self, n_blade: int, pitch: float):
+        # Inlet/outlet surfaces
+        self.imp_3d[str(n_blade)]["inlet_in_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.inlet_in_surf[0],
+                r=self.inlet_in_surf[1],
+                theta=self.theta_direct * (self.inlet_in_surf[2] + pitch),
+            )
+        )
+        self.imp_3d[str(n_blade)]["inlet_out_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.inlet_out_surf[0],
+                r=self.inlet_out_surf[1],
+                theta=self.theta_direct * (self.inlet_out_surf[2] + pitch),
+            )
+        )
+        self.imp_3d[str(n_blade)]["outlet_in_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.outlet_in_surf[0],
+                r=self.outlet_in_surf[1],
+                theta=self.theta_direct * (self.outlet_in_surf[2] + pitch),
+            )
+        )
+        self.imp_3d[str(n_blade)]["outlet_out_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.outlet_out_surf[0],
+                r=self.outlet_out_surf[1],
+                theta=self.theta_direct * (self.outlet_out_surf[2] + pitch),
+            )
+        )
+
+        # Shroud inlet/outlet surfaces
+        self.imp_3d[str(n_blade)]["shroud_inlet_in_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.shroud_inlet_in_surf[0],
+                r=self.shroud_inlet_in_surf[1],
+                theta=self.theta_direct * (self.shroud_inlet_in_surf[2] + pitch),
+            )
+        )
+        self.imp_3d[str(n_blade)]["shroud_inlet_out_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.shroud_inlet_out_surf[0],
+                r=self.shroud_inlet_out_surf[1],
+                theta=self.theta_direct * (self.shroud_inlet_out_surf[2] + pitch),
+            )
+        )
+        self.imp_3d[str(n_blade)]["shroud_outlet_in_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.shroud_outlet_in_surf[0],
+                r=self.shroud_outlet_in_surf[1],
+                theta=self.theta_direct * (self.shroud_outlet_in_surf[2] + pitch),
+            )
+        )
+        self.imp_3d[str(n_blade)]["shroud_outlet_out_surf"] = (
+            CoordinateConverter.cylindrical_to_cartesian_coordinates(
+                x=self.shroud_outlet_out_surf[0],
+                r=self.shroud_outlet_out_surf[1],
+                theta=self.theta_direct * (self.shroud_outlet_out_surf[2] + pitch),
             )
         )
 
@@ -435,60 +627,6 @@ class ImpellerGeneration:
                 theta=self.theta_direct
                 * (self.imp_gen_val["periodic_high_ordered"] + pitch),
             )
-        )
-
-        def _get_periodic_surface(
-            hub_wall_dict,
-            shroud_wall_dict,
-            periodic_loc: Literal["periodic_low", "periodic_high"],
-        ) -> Coords3D:
-            """
-            The shroud periodic surface starts from the edge of the periodic surface
-            at blade tip radius extending to the shroud edge parrallel to it on either
-            sides.
-            """
-            i = 0 if periodic_loc == "periodic_low" else -1
-
-            x_arr = np.stack(
-                (
-                    np.array(hub_wall_dict[0])[i],
-                    np.array(shroud_wall_dict[0])[i],
-                )
-            )
-            r_arr = np.stack(
-                (
-                    np.array(hub_wall_dict[1])[i],
-                    np.array(shroud_wall_dict[1])[i],
-                )
-            )
-            theta_arr = self.theta_direct * np.stack(
-                (
-                    np.array(hub_wall_dict[2])[i],
-                    np.array(shroud_wall_dict[2])[i],
-                )
-            )
-            return x_arr, r_arr, theta_arr
-
-        x_in_low, r_in_low, theta_in_low = _get_periodic_surface(
-            hub_wall_dict=self.inlet_hub_wall,
-            shroud_wall_dict=self.inlet_shroud_wall,
-            periodic_loc="periodic_low",
-        )
-        x_in_high, r_in_high, theta_in_high = _get_periodic_surface(
-            hub_wall_dict=self.inlet_hub_wall,
-            shroud_wall_dict=self.inlet_shroud_wall,
-            periodic_loc="periodic_high",
-        )
-
-        x_out_low, r_out_low, theta_out_low = _get_periodic_surface(
-            hub_wall_dict=self.outlet_hub_wall,
-            shroud_wall_dict=self.outlet_shroud_wall,
-            periodic_loc="periodic_low",
-        )
-        x_out_high, r_out_high, theta_out_high = _get_periodic_surface(
-            hub_wall_dict=self.outlet_hub_wall,
-            shroud_wall_dict=self.outlet_shroud_wall,
-            periodic_loc="periodic_high",
         )
 
         self.imp_3d[str(n_blade)]["inlet_periodic_low"] = (
@@ -668,6 +806,18 @@ class ImpellerGeneration:
         self,
         axes_lim: float,
         single_passage: bool = False,
+        # --- Inlet surfaces ---
+        inlet_in_surf: bool = True,
+        inlet_out_surf: bool = True,
+        # --- Outlet surfaces ---
+        outlet_in_surf: bool = True,
+        outlet_out_surf: bool = True,
+        # --- Shroud inlet surfaces ---
+        shroud_inlet_in_surf: bool = True,
+        shroud_inlet_out_surf: bool = True,
+        # --- Shroud outlet surfaces ---
+        shroud_outlet_in_surf: bool = True,
+        shroud_outlet_out_surf: bool = True,
         # --- Blade surfaces ---
         SS: bool = True,
         PS: bool = True,
@@ -704,6 +854,66 @@ class ImpellerGeneration:
         fig, ax = BladePlots3D.create_figure(axes_lim)
 
         for n in range(self.n_blades):
+            # Inlet/Outlet surfaces
+            if inlet_in_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["inlet_in_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+            if inlet_out_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["inlet_out_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+            if outlet_in_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["outlet_in_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+            if outlet_out_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["outlet_out_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+
+            # Shroud inlet/outlet surfaces
+            if shroud_inlet_in_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["shroud_inlet_in_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+            if shroud_inlet_out_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["shroud_inlet_out_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+            if shroud_outlet_in_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["shroud_outlet_in_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+            if shroud_outlet_out_surf:
+                BladePlots3D.plot_surface(
+                    cart_coords_3d=self.imp_3d[str(n)]["shroud_outlet_out_surf"],
+                    ax=ax,
+                    linewidth=0.5,
+                    color="cyan",
+                )
+
             if SS:
                 BladePlots3D.plot_surface(
                     cart_coords_3d=self.imp_3d[str(n)]["SS"],
@@ -722,7 +932,7 @@ class ImpellerGeneration:
 
             if tip_surf:
                 BladePlots3D.plot_surface(
-                    cart_coords_3d=self.imp_3d[str(n)]["tip_surface"],
+                    cart_coords_3d=self.imp_3d[str(n)]["tip_surf"],
                     ax=ax,
                     linewidth=0.5,
                     color="cyan",
@@ -730,7 +940,7 @@ class ImpellerGeneration:
 
             if inlet_tip_surf:
                 BladePlots3D.plot_surface(
-                    cart_coords_3d=self.imp_3d[str(n)]["inlet_tip_surface"],
+                    cart_coords_3d=self.imp_3d[str(n)]["inlet_tip_surf"],
                     ax=ax,
                     linewidth=0.5,
                     color="cyan",
@@ -738,7 +948,7 @@ class ImpellerGeneration:
 
             if outlet_tip_surf:
                 BladePlots3D.plot_surface(
-                    cart_coords_3d=self.imp_3d[str(n)]["outlet_tip_surface"],
+                    cart_coords_3d=self.imp_3d[str(n)]["outlet_tip_surf"],
                     ax=ax,
                     linewidth=0.5,
                     color="cyan",
@@ -797,21 +1007,21 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["periodic_low"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
             if inlet_periodic_low:
                 BladePlots3D.plot_surface(
                     cart_coords_3d=self.imp_3d[str(n)]["inlet_periodic_low"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
             if outlet_periodic_low:
                 BladePlots3D.plot_surface(
                     cart_coords_3d=self.imp_3d[str(n)]["outlet_periodic_low"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if periodic_high:
@@ -819,21 +1029,21 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["periodic_high"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
             if inlet_periodic_high:
                 BladePlots3D.plot_surface(
                     cart_coords_3d=self.imp_3d[str(n)]["inlet_periodic_high"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
             if outlet_periodic_high:
                 BladePlots3D.plot_surface(
                     cart_coords_3d=self.imp_3d[str(n)]["outlet_periodic_high"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if shroud_periodic_low:
@@ -841,7 +1051,7 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["shroud_periodic_low"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if shroud_periodic_high:
@@ -849,7 +1059,7 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["shroud_periodic_high"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if inlet_shroud_periodic_low:
@@ -857,7 +1067,7 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["inlet_shroud_periodic_low"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if inlet_shroud_periodic_high:
@@ -865,7 +1075,7 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["inlet_shroud_periodic_high"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if outlet_shroud_periodic_low:
@@ -873,7 +1083,7 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["outlet_shroud_periodic_low"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if outlet_shroud_periodic_high:
@@ -881,7 +1091,7 @@ class ImpellerGeneration:
                     cart_coords_3d=self.imp_3d[str(n)]["outlet_shroud_periodic_high"],
                     ax=ax,
                     linewidth=0.5,
-                    color="green",
+                    color="lightgreen",
                 )
 
             if single_passage:

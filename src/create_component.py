@@ -18,7 +18,7 @@ init_pts = InitialMeridionalPoints(
     pt_s2=(0.032, 0.065),
 )
 init_blade = InitialBladeValues(t_B=0.003, n_blades=11)
-plt_settings = PlotSettings(blade_profile_res=500, grid_dens=30)
+plt_settings = PlotSettings(blade_profile_res=500, grid_dens=10)
 shroud_clrance = 0.001
 theta_direct = -1
 span_frac_list = [0, 0.25, 0.5, 0.75, 1]
@@ -50,6 +50,7 @@ imp_gen = ImpellerGeneration(
 imp_gen.pre_process_design_values()
 imp_gen.spline_spanwise()
 imp_gen.domain_boundaries()
+imp_gen.inlet_outlet_surfaces()
 imp_gen.convert_to_cartesian_3d()
 
 # Plots
@@ -61,25 +62,71 @@ imp_design.plot_meridional_profiles()
 imp_gen.plot_impeller(
     axes_lim,
     single_passage=True,
-    # SS=False,
-    # PS=False,
-    # tip_surface=False,
-    # hub_wall=False,
-    # shroud_wall=False,
-    # periodic_low=False,
-    # periodic_high=False,
-    # shroud_periodic_low=False,
-    # shroud_periodic_high=False,
-)
-imp_gen.plot_impeller(
-    axes_lim,
+    # --- Inlet surfaces ---
+    # inlet_in_surf=False,
+    # inlet_out_surf=False,
+    # --- Outlet surfaces ---
+    # outlet_in_surf=False,
+    # outlet_out_surf=False,
+    # --- Shroud inlet surfaces ---
+    # shroud_inlet_in_surf=False,
+    # shroud_inlet_out_surf=False,
+    # --- Shroud outlet surfaces ---
+    # shroud_outlet_in_surf=False,
+    # shroud_outlet_out_surf=False,
     # --- Blade surfaces ---
     # SS=False,
     # PS=False,
     # --- Hub walls ---
     # hub_wall=False,
     # inlet_hub_wall=False,
-    outlet_hub_wall=False,
+    # outlet_hub_wall=False,
+    # --- Shroud walls ---
+    # shroud_wall=False,
+    # inlet_shroud_wall=False,
+    # outlet_shroud_wall=False,
+    # --- Tip surfaces ---
+    # tip_surf=False,
+    # inlet_tip_surf=False,
+    # outlet_tip_surf=False,
+    # --- Periodic lows ---
+    # periodic_low=False,
+    # inlet_periodic_low=False,
+    # outlet_periodic_low=False,
+    # --- Periodic highs ---
+    # periodic_high=False,
+    # inlet_periodic_high=False,
+    # outlet_periodic_high=False,
+    # --- Shroud periodic lows ---
+    # shroud_periodic_low=False,
+    # inlet_shroud_periodic_low=False,
+    # outlet_shroud_periodic_low=False,
+    # --- Shroud periodic highss ---
+    # shroud_periodic_high=False,
+    # inlet_shroud_periodic_high=False,
+    # outlet_shroud_periodic_high=False,
+)
+imp_gen.plot_impeller(
+    axes_lim,
+    # --- Inlet surfaces ---
+    inlet_in_surf=False,
+    inlet_out_surf=False,
+    # --- Outlet surfaces ---
+    outlet_in_surf=False,
+    outlet_out_surf=False,
+    # --- Shroud inlet surfaces ---
+    shroud_inlet_in_surf=False,
+    shroud_inlet_out_surf=False,
+    # --- Shroud outlet surfaces ---
+    shroud_outlet_in_surf=False,
+    shroud_outlet_out_surf=False,
+    # --- Blade surfaces ---
+    # SS=False,
+    # PS=False,
+    # --- Hub walls ---
+    # hub_wall=False,
+    # inlet_hub_wall=False,
+    # outlet_hub_wall=False,
     # --- Shroud walls ---
     shroud_wall=False,
     inlet_shroud_wall=False,

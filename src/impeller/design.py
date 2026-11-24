@@ -378,7 +378,7 @@ class ImpellerDesign:
 
         self._add_boundary_domain_values(
             dmain_dict=self.blade_pass_dmain,
-            surf="tip_surface",
+            surf="tip_surf",
             x_arr=x_s_arr,
             r_arr=r_s_arr,
             mid_pt_arr=mid_pt_s_arr,
@@ -393,7 +393,7 @@ class ImpellerDesign:
         """
 
         def _get_inlet_domain_values(
-            surf: Literal["hub_wall", "shroud_wall", "tip_surface"],
+            surf: Literal["hub_wall", "shroud_wall", "tip_surf"],
         ):
             # Axial
             x_1 = np.array(self.blade_pass_dmain[surf]["x_arr"])[0]
@@ -419,7 +419,7 @@ class ImpellerDesign:
             _get_inlet_domain_values("shroud_wall")
         )
         x_t_arr, r_t_arr, mid_pt_t_arr, periodic_low_t, periodic_high_t = (
-            _get_inlet_domain_values("tip_surface")
+            _get_inlet_domain_values("tip_surf")
         )
 
         self._add_boundary_domain_values(
@@ -431,7 +431,6 @@ class ImpellerDesign:
             periodic_low=periodic_low_h,
             periodic_high=periodic_high_h,
         )
-
         self._add_boundary_domain_values(
             dmain_dict=self.inlet_dmain,
             surf="shroud_wall",
@@ -441,10 +440,9 @@ class ImpellerDesign:
             periodic_low=periodic_low_s,
             periodic_high=periodic_high_s,
         )
-
         self._add_boundary_domain_values(
             dmain_dict=self.inlet_dmain,
-            surf="tip_surface",
+            surf="tip_surf",
             x_arr=x_t_arr,
             r_arr=r_t_arr,
             mid_pt_arr=mid_pt_t_arr,
@@ -459,7 +457,7 @@ class ImpellerDesign:
         """
 
         def _get_outlet_domain_values(
-            surf: Literal["hub_wall", "shroud_wall", "tip_surface"],
+            surf: Literal["hub_wall", "shroud_wall", "tip_surf"],
         ):
             # Axial
             x_2 = np.array(self.blade_pass_dmain[surf]["x_arr"])[-1]
@@ -485,7 +483,7 @@ class ImpellerDesign:
             _get_outlet_domain_values("shroud_wall")
         )
         x_t_arr, r_t_arr, mid_pt_t_arr, periodic_low_t, periodic_high_t = (
-            _get_outlet_domain_values("tip_surface")
+            _get_outlet_domain_values("tip_surf")
         )
 
         self._add_boundary_domain_values(
@@ -497,7 +495,6 @@ class ImpellerDesign:
             periodic_low=periodic_low_h,
             periodic_high=periodic_high_h,
         )
-
         self._add_boundary_domain_values(
             dmain_dict=self.outlet_dmain,
             surf="shroud_wall",
@@ -507,10 +504,9 @@ class ImpellerDesign:
             periodic_low=periodic_low_s,
             periodic_high=periodic_high_s,
         )
-
         self._add_boundary_domain_values(
             dmain_dict=self.outlet_dmain,
-            surf="tip_surface",
+            surf="tip_surf",
             x_arr=x_t_arr,
             r_arr=r_t_arr,
             mid_pt_arr=mid_pt_t_arr,
@@ -558,7 +554,7 @@ class ImpellerDesign:
                     r_arr=value["r_arr"],
                     ax=ax,
                     linestyle="solid",
-                    linewidth=1.5,
+                    linewidth=1,
                     color="black",
                 )
             elif key == "0":
@@ -575,26 +571,6 @@ class ImpellerDesign:
 
         # Hub wall
         MeridionalPlots.plot_meridional_contour(
-            x_arr=self.blade_pass_dmain["hub_wall"]["x_arr"],
-            r_arr=self.blade_pass_dmain["hub_wall"]["r_arr"],
-            ax=ax,
-            linestyle="solid",
-            linewidth=1.5,
-            color="black",
-        )
-
-        # Shroud wall
-        MeridionalPlots.plot_meridional_contour(
-            x_arr=self.blade_pass_dmain["shroud_wall"]["x_arr"],
-            r_arr=self.blade_pass_dmain["shroud_wall"]["r_arr"],
-            ax=ax,
-            linestyle="solid",
-            linewidth=1.5,
-            color="black",
-        )
-
-        # Inlet domain
-        MeridionalPlots.plot_meridional_contour(
             x_arr=self.inlet_dmain["hub_wall"]["x_arr"],
             r_arr=self.inlet_dmain["hub_wall"]["r_arr"],
             ax=ax,
@@ -603,6 +579,24 @@ class ImpellerDesign:
             color="black",
         )
         MeridionalPlots.plot_meridional_contour(
+            x_arr=self.blade_pass_dmain["hub_wall"]["x_arr"],
+            r_arr=self.blade_pass_dmain["hub_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+        MeridionalPlots.plot_meridional_contour(
+            x_arr=self.outlet_dmain["hub_wall"]["x_arr"],
+            r_arr=self.outlet_dmain["hub_wall"]["r_arr"],
+            ax=ax,
+            linestyle="solid",
+            linewidth=1.5,
+            color="black",
+        )
+
+        # Shroud wall
+        MeridionalPlots.plot_meridional_contour(
             x_arr=self.inlet_dmain["shroud_wall"]["x_arr"],
             r_arr=self.inlet_dmain["shroud_wall"]["r_arr"],
             ax=ax,
@@ -610,11 +604,9 @@ class ImpellerDesign:
             linewidth=1.5,
             color="black",
         )
-
-        # Outlet domain
         MeridionalPlots.plot_meridional_contour(
-            x_arr=self.outlet_dmain["hub_wall"]["x_arr"],
-            r_arr=self.outlet_dmain["hub_wall"]["r_arr"],
+            x_arr=self.blade_pass_dmain["shroud_wall"]["x_arr"],
+            r_arr=self.blade_pass_dmain["shroud_wall"]["r_arr"],
             ax=ax,
             linestyle="solid",
             linewidth=1.5,

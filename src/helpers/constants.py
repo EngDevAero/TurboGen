@@ -107,6 +107,18 @@ class ImpCoords2D(TypedDict):
 
 
 class ImpCoords3D(TypedDict):
+    # --- Inlet surfaces ---
+    inlet_in_surf: Coords3D
+    inlet_out_surf: Coords3D
+    # --- Outlet surfaces ---
+    outlet_in_surf: Coords3D
+    outlet_out_surf: Coords3D
+    # --- Shroud inlet surfaces ---
+    shroud_inlet_in_surf: Coords3D
+    shroud_inlet_out_surf: Coords3D
+    # --- Shroud outlet surfaces ---
+    shroud_outlet_in_surf: Coords3D
+    shroud_outlet_out_surf: Coords3D
     # --- Blade surfaces ---
     SS: Coords3D
     PS: Coords3D
@@ -119,9 +131,9 @@ class ImpCoords3D(TypedDict):
     inlet_shroud_wall: Coords3D
     outlet_shroud_wall: Coords3D
     # --- Tip surfaces ---
-    tip_surface: Coords3D
-    inlet_tip_surface: Coords3D
-    outlet_tip_surface: Coords3D
+    tip_surf: Coords3D
+    inlet_tip_surf: Coords3D
+    outlet_tip_surf: Coords3D
     # --- Periodic lows ---
     periodic_low: Coords3D
     inlet_periodic_low: Coords3D
